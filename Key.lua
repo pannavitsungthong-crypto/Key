@@ -4,7 +4,7 @@ local KeyLink = "https://your-key-link.com" -- When pressing GET KEY, this link 
 
 --// LOADSTRING TO RUN AFTER CORRECT KEY
 local ScriptToRun = [[
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/pannavitsungthong-crypto/Key/refs/heads/main/fps%20boot.lua"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/pannavitsungthong-crypto/Key/refs/heads/main/fps%20boot.lua")()
 
 ]]
 --// GUI CREATION
