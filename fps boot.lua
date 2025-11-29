@@ -144,7 +144,7 @@ local function targetPlayerUI()
         if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
             local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if hrp then
-                hrp.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,-3)
+                hrp.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0,-5,0)
                 -- ติดตามด้านหลัง
                 game:GetService("RunService").RenderStepped:Connect(function()
                     if hrp.Parent and target.Character then
