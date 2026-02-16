@@ -1,102 +1,154 @@
---[[
-	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
-]]
-local Players = game:GetService("Players")
-local camera = workspace.CurrentCamera
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+--[[  
+    WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!  
+]]  
 
--- Create the GUI Button
-local screenGui = Instance.new("ScreenGui", playerGui)
-screenGui.Name = "LockOnGui"
+local Players = game:GetService("Players")  
+local RunService = game:GetService("RunService")  
 
-local button = Instance.new("TextButton", screenGui)
-button.Name = "LockOnButton"
-button.Size = UDim2.new(0, 35, 0, 35) -- 35x35 pixels
-button.Position = UDim2.new(0, 605, 0, -40) -- Adjusted to be 100 more pixels to the right
-button.Text = "Lock On" -- Lock icon
-button.TextScaled = true
-button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-button.TextColor3 = Color3.fromRGB(255, 255, 255)
-button.BackgroundTransparency = 0.4  -- Slight transparency to make the glow more visible
+local player = Players.LocalPlayer  
+local camera = workspace.CurrentCamera  
+local playerGui = player:WaitForChild("PlayerGui")  
 
--- Glow Frame (for the glow effect)
-local glowFrame = Instance.new("Frame", button)
-glowFrame.Size = UDim2.new(1.2, 0, 1.2, 0)  -- Slightly bigger than the button for the glow effect
-glowFrame.Position = UDim2.new(0, -5, 0, -5) -- Position the glow around the button
-glowFrame.BackgroundTransparency = 1
-glowFrame.BackgroundColor3 = Color3.fromRGB(0, 255, 0)  -- Glow color (green)
+--========================
+-- GUI
+--========================
+local screenGui = Instance.new("ScreenGui")  
+screenGui.Name = "LockOnGui"  
+screenGui.ResetOnSpawn = false -- ⭐ ทำให้ไม่หายตอนตาย  
+screenGui.Parent = playerGui  
 
--- Add a UIGradient to simulate the glow
-local glowGradient = Instance.new("UIGradient", glowFrame)
-glowGradient.Color = ColorSequence.new(Color3.fromRGB(0, 255, 0), Color3.fromRGB(0, 255, 0))
-glowGradient.Transparency = NumberSequence.new(0.5, 1)  -- Make the glow fade out
-glowGradient.Rotation = 45  -- Slight rotation for the glow effect
+local button = Instance.new("TextButton")  
+button.Name = "LockOnButton"  
+button.Size = UDim2.new(0, 35, 0, 35)  
+button.Position = UDim2.new(0, 605, 0, -40)  
+button.Text = "Lock On"  
+button.TextScaled = true  
+button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)  
+button.TextColor3 = Color3.fromRGB(255, 255, 255)  
+button.BackgroundTransparency = 0.4  
+button.Parent = screenGui  
 
--- Make the glow invisible initially
-glowFrame.Visible = false
+-- Glow
+local glowFrame = Instance.new("Frame")  
+glowFrame.Size = UDim2.new(1.2, 0, 1.2, 0)  
+glowFrame.Position = UDim2.new(0, -5, 0, -5)  
+glowFrame.BackgroundTransparency = 1  
+glowFrame.BackgroundColor3 = Color3.fromRGB(0, 255, 0)  
+glowFrame.Visible = false  
+glowFrame.Parent = button  
 
--- Variables
-local isLockedOn = false
-local target = nil
+local glowGradient = Instance.new("UIGradient")  
+glowGradient.Color = ColorSequence.new(Color3.fromRGB(0, 255, 0), Color3.fromRGB(0, 255, 0))  
+glowGradient.Transparency = NumberSequence.new(0.5, 1)  
+glowGradient.Rotation = 45  
+glowGradient.Parent = glowFrame  
 
--- Function to find the nearest target (players and NPCs) within a 50-stud radius
-local function getNearestTarget()
-    local nearest = nil
-    local shortestDistance = 50 -- Set maximum distance to 50 studs
-    local playerPos = player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character.HumanoidRootPart.Position
+--========================
+-- STATE
+--========================
+local isLockedOn = false  
+local target = nil  
 
-    if not playerPos then return nil end
+--========================
+-- TARGET FIND
+--========================
+local function getNearestTarget()  
+    local char = player.Character  
+    if not char then return nil end  
 
-    -- Check all potential targets (Players and NPCs)
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") and obj ~= player.Character and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
-            local distance = (obj.HumanoidRootPart.Position - playerPos).Magnitude
-            if distance < shortestDistance then
-                shortestDistance = distance
-                nearest = obj
-            end
-        end
-    end
+    local root = char:FindFirstChild("HumanoidRootPart")  
+    if not root then return nil end  
 
-    return nearest
-end
+    local nearest = nil  
+    local shortestDistance = 50  
 
--- Toggle Lock-On State
-button.MouseButton1Click:Connect(function()
-    isLockedOn = not isLockedOn -- Toggle state
-    if isLockedOn then
-        button.BackgroundColor3 = Color3.fromRGB(102, 255, 102) -- Lighter green when enabled
-        glowFrame.Visible = true  -- Show the glow effect
-        -- Auto-lock on the nearest target if not already locked
-        if not target then
-            target = getNearestTarget()
-        end
-    else
-        button.BackgroundColor3 = Color3.fromRGB(50, 50, 50) -- Gray when disabled
-        glowFrame.Visible = false  -- Hide the glow effect
-        camera.CameraSubject = player.Character:FindFirstChild("Humanoid")
-        target = nil
-    end
-end)
+    for _, obj in ipairs(workspace:GetDescendants()) do  
+        if obj:IsA("Model")  
+        and obj ~= char  
+        and obj:FindFirstChild("Humanoid")  
+        and obj:FindFirstChild("HumanoidRootPart")  
+        and obj.Humanoid.Health > 0 then  
 
--- Continuously Update Camera Lock
-game:GetService("RunService").RenderStepped:Connect(function()
-    if isLockedOn and target then
-        local humanoidRootPart = target:FindFirstChild("HumanoidRootPart")
-        if humanoidRootPart and target:FindFirstChild("Humanoid").Health > 0 then
-            -- Rotate camera to face the target's HumanoidRootPart while maintaining player's POV
-            local targetPosition = humanoidRootPart.Position
-            local cameraPosition = camera.CFrame.Position
-            local direction = (targetPosition - cameraPosition).unit -- Get direction vector
-            camera.CFrame = CFrame.new(cameraPosition, cameraPosition + direction) -- Update camera orientation
-        else
-            -- Reset if the target is invalid or out of range
-            button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-            glowFrame.Visible = false  -- Hide the glow effect
-            camera.CameraSubject = player.Character:FindFirstChild("Humanoid")
-            isLockedOn = false
-            target = nil
-        end
-    end
+            local distance = (obj.HumanoidRootPart.Position - root.Position).Magnitude  
+            if distance < shortestDistance then  
+                shortestDistance = distance  
+                nearest = obj  
+            end  
+        end  
+    end  
+
+    return nearest  
+end  
+
+--========================
+-- BUTTON TOGGLE
+--========================
+button.MouseButton1Click:Connect(function()  
+    isLockedOn = not isLockedOn  
+
+    if isLockedOn then  
+        button.BackgroundColor3 = Color3.fromRGB(102, 255, 102)  
+        glowFrame.Visible = true  
+
+        if not target then  
+            target = getNearestTarget()  
+        end  
+    else  
+        button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)  
+        glowFrame.Visible = false  
+
+        local char = player.Character  
+        if char and char:FindFirstChild("Humanoid") then  
+            camera.CameraSubject = char.Humanoid  
+        end  
+
+        target = nil  
+    end  
+end)  
+
+--========================
+-- CHARACTER RESPAWN FIX
+--========================
+player.CharacterAdded:Connect(function(char)  
+    local humanoid = char:WaitForChild("Humanoid")  
+    camera.CameraSubject = humanoid  
+
+    -- ถ้า Lock เปิดอยู่ → หาเป้าใหม่อัตโนมัติ
+    if isLockedOn then  
+        target = getNearestTarget()  
+
+        if not target then  
+            isLockedOn = false  
+            button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)  
+            glowFrame.Visible = false  
+        end  
+    end  
+end)  
+
+--========================
+-- CAMERA LOCK
+--========================
+RunService.RenderStepped:Connect(function()  
+    if not isLockedOn then return end  
+    if not target then return end  
+
+    local humanoidRootPart = target:FindFirstChild("HumanoidRootPart")  
+    local humanoid = target:FindFirstChild("Humanoid")  
+
+    if humanoidRootPart and humanoid and humanoid.Health > 0 then  
+        local cameraPosition = camera.CFrame.Position  
+        local direction = (humanoidRootPart.Position - cameraPosition).Unit  
+        camera.CFrame = CFrame.new(cameraPosition, cameraPosition + direction)  
+    else  
+        -- เป้าหาย / ตาย
+        isLockedOn = false  
+        target = nil  
+        glowFrame.Visible = false  
+        button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)  
+
+        local char = player.Character  
+        if char and char:FindFirstChild("Humanoid") then  
+            camera.CameraSubject = char.Humanoid  
+        end  
+    end  
 end)
