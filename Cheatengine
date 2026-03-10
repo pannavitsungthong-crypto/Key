@@ -24,11 +24,22 @@ def refresh_process():
 
 def attach_process():
     global pm
-    selection = process_list.get(process_list.curselection())
+
+    sel = process_list.curselection()
+
+    if not sel:
+        status.set("Please select a process first")
+        return
+
+    selection = process_list.get(sel[0])
     pid = int(selection.split(" - ")[0])
-    pm = pymem.Pymem()
-    pm.open_process_from_id(pid)
-    status.set(f"Attached PID {pid}")
+
+    try:
+        pm = pymem.Pymem()
+        pm.open_process_from_id(pid)
+        status.set(f"Attached PID {pid}")
+    except:
+        status.set("Attach failed")
 
 def browse_exe():
     global pm
@@ -108,8 +119,13 @@ def next_scan():
 # ---------------- MEMORY EDIT ----------------
 
 def add_address():
-    sel = result_list.get(result_list.curselection())
-    address_table.insert("",tk.END,values=(sel,""))
+    sel = result_list.curselection()
+
+    if not sel:
+        return
+
+    address = result_list.get(sel[0])
+    address_table.insert("", tk.END, values=(address, ""))
 
 def edit_value():
     selected = address_table.selection()
@@ -170,7 +186,6 @@ root.geometry("900x600")
 status = tk.StringVar()
 status.set("Not Attached")
 
-# left panel
 left = tk.Frame(root)
 left.pack(side="left",fill="y")
 
@@ -183,7 +198,6 @@ tk.Button(left,text="Refresh",command=refresh_process).pack()
 tk.Button(left,text="Attach",command=attach_process).pack()
 tk.Button(left,text="Browse EXE",command=browse_exe).pack()
 
-# scan area
 scan_frame = tk.Frame(root)
 scan_frame.pack()
 
@@ -195,20 +209,17 @@ value_entry.grid(row=0,column=1)
 tk.Button(scan_frame,text="First Scan",command=lambda: threading.Thread(target=first_scan).start()).grid(row=0,column=2)
 tk.Button(scan_frame,text="Next Scan",command=next_scan).grid(row=0,column=3)
 
-# result list
 result_list = tk.Listbox(root,height=10)
 result_list.pack(fill="x")
 
 tk.Button(root,text="Add Address",command=add_address).pack()
 
-# address table
 columns=("Address","Value")
 address_table = ttk.Treeview(root,columns=columns,show="headings")
 address_table.heading("Address",text="Address")
 address_table.heading("Value",text="Value")
 address_table.pack(fill="x")
 
-# edit section
 edit_frame = tk.Frame(root)
 edit_frame.pack()
 
@@ -224,11 +235,9 @@ tk.Button(edit_frame,text="Edit",command=edit_value).grid(row=2,column=0)
 tk.Button(edit_frame,text="Freeze",command=freeze_value).grid(row=2,column=1)
 tk.Button(edit_frame,text="Pointer Scan",command=pointer_scan).grid(row=2,column=2)
 
-# pointer list
 pointer_list = tk.Listbox(root,height=6)
 pointer_list.pack(fill="x")
 
-# status bar
 tk.Label(root,textvariable=status).pack()
 
 refresh_process()
