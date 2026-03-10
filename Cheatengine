@@ -1,0 +1,162 @@
+import tkinter as tk
+from tkinter import ttk, filedialog
+import pymem
+import psutil
+import struct
+import threading
+import time
+
+pm = None
+found_addresses = []
+freeze_list = {}
+
+# ---------------- PROCESS ----------------
+
+def refresh_process():
+    process_list.delete(0, tk.END)
+    for p in psutil.process_iter(['pid','name']):
+        try:
+            process_list.insert(tk.END, f"{p.info['pid']} - {p.info['name']}")
+        except:
+            pass
+
+def attach_process():
+    global pm
+    selection = process_list.get(process_list.curselection())
+    pid = int(selection.split(" - ")[0])
+    pm = pymem.Pymem()
+    pm.open_process_from_id(pid)
+    status_label.config(text=f"Attached PID {pid}")
+
+# ---------------- SCAN ----------------
+
+def fast_scan():
+    global found_addresses
+    found_addresses.clear()
+
+    value = int(value_entry.get())
+    value_bytes = struct.pack("i", value)
+
+    base = 0x00000000
+    max_address = 0x7fffffff
+
+    addr = base
+
+    while addr < max_address:
+        try:
+            data = pm.read_bytes(addr, 4096)
+            for i in range(len(data)-4):
+                if data[i:i+4] == value_bytes:
+                    found_addresses.append(addr+i)
+                    result_list.insert(tk.END, hex(addr+i))
+        except:
+            pass
+
+        addr += 4096
+
+    status_label.config(text=f"Found {len(found_addresses)} addresses")
+
+# ---------------- EDIT ----------------
+
+def edit_value():
+    addr = int(address_entry.get(),16)
+    new_value = int(new_value_entry.get())
+
+    pm.write_int(addr,new_value)
+
+# ---------------- FREEZE ----------------
+
+def add_freeze():
+    addr = int(address_entry.get(),16)
+    value = int(new_value_entry.get())
+    freeze_list[addr] = value
+
+def freeze_loop():
+    while True:
+        for addr,val in freeze_list.items():
+            try:
+                pm.write_int(addr,val)
+            except:
+                pass
+        time.sleep(0.2)
+
+threading.Thread(target=freeze_loop,daemon=True).start()
+
+# ---------------- POINTER SCAN (simple) ----------------
+
+def pointer_scan():
+    addr = int(address_entry.get(),16)
+    base = addr - 0x1000
+    end = addr + 0x1000
+
+    pointer_list.delete(0,tk.END)
+
+    for i in range(base,end,4):
+        try:
+            val = pm.read_int(i)
+            if val == addr:
+                pointer_list.insert(tk.END,hex(i))
+        except:
+            pass
+
+# ---------------- UI ----------------
+
+root = tk.Tk()
+root.title("Mini Cheat Engine")
+root.geometry("700x500")
+
+frame_left = tk.Frame(root)
+frame_left.pack(side="left",fill="y")
+
+frame_right = tk.Frame(root)
+frame_right.pack(side="right",expand=True,fill="both")
+
+tk.Label(frame_left,text="Processes").pack()
+
+process_list = tk.Listbox(frame_left,width=30)
+process_list.pack()
+
+tk.Button(frame_left,text="Refresh",command=refresh_process).pack()
+tk.Button(frame_left,text="Attach",command=attach_process).pack()
+
+# scan section
+
+scan_frame = tk.Frame(frame_right)
+scan_frame.pack()
+
+tk.Label(scan_frame,text="Value").grid(row=0,column=0)
+
+value_entry = tk.Entry(scan_frame)
+value_entry.grid(row=0,column=1)
+
+tk.Button(scan_frame,text="First Scan",command=lambda: threading.Thread(target=fast_scan).start()).grid(row=0,column=2)
+
+result_list = tk.Listbox(frame_right)
+result_list.pack(fill="both",expand=True)
+
+# edit
+
+edit_frame = tk.Frame(frame_right)
+edit_frame.pack()
+
+tk.Label(edit_frame,text="Address").grid(row=0,column=0)
+address_entry = tk.Entry(edit_frame)
+address_entry.grid(row=0,column=1)
+
+tk.Label(edit_frame,text="New Value").grid(row=1,column=0)
+new_value_entry = tk.Entry(edit_frame)
+new_value_entry.grid(row=1,column=1)
+
+tk.Button(edit_frame,text="Edit",command=edit_value).grid(row=2,column=0)
+tk.Button(edit_frame,text="Freeze",command=add_freeze).grid(row=2,column=1)
+tk.Button(edit_frame,text="Pointer Scan",command=pointer_scan).grid(row=2,column=2)
+
+pointer_list = tk.Listbox(frame_right,height=6)
+pointer_list.pack(fill="x")
+
+status_label = tk.Label(root,text="Not Attached")
+status_label.pack()
+
+refresh_process()
+
+root.mainloop()
