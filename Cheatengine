@@ -1,10 +1,12 @@
 import tkinter as tk
 from tkinter import ttk
+from tkinter import filedialog
 import pymem
 import psutil
 import struct
 import threading
 import time
+import os
 
 pm = None
 scan_results = []
@@ -27,6 +29,31 @@ def attach_process():
     pm = pymem.Pymem()
     pm.open_process_from_id(pid)
     status.set(f"Attached PID {pid}")
+
+def browse_exe():
+    global pm
+
+    file_path = filedialog.askopenfilename(
+        title="Select EXE",
+        filetypes=[("Executable files","*.exe")]
+    )
+
+    if not file_path:
+        return
+
+    exe_name = os.path.basename(file_path)
+
+    for p in psutil.process_iter(['pid','name']):
+        try:
+            if p.info['name'].lower() == exe_name.lower():
+                pm = pymem.Pymem()
+                pm.open_process_from_id(p.info['pid'])
+                status.set(f"Attached {exe_name} PID {p.info['pid']}")
+                return
+        except:
+            pass
+
+    status.set("Program not running")
 
 # ---------------- SCAN ----------------
 
@@ -154,6 +181,7 @@ process_list.pack(fill="y")
 
 tk.Button(left,text="Refresh",command=refresh_process).pack()
 tk.Button(left,text="Attach",command=attach_process).pack()
+tk.Button(left,text="Browse EXE",command=browse_exe).pack()
 
 # scan area
 scan_frame = tk.Frame(root)
